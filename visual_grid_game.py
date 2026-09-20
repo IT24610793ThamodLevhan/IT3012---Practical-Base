@@ -10,7 +10,7 @@ class VisualGridHuntGame:
         self.width = width
         self.height = height
         self.agent_pos = [0, 0]  # Starting position (x, y)
-
+        self.facing_direction = 'Up'  # Current facing direction
 
         if custom_walls is not None:
             self.walls = set(custom_walls)
@@ -27,8 +27,7 @@ class VisualGridHuntGame:
             if pos_tuple != (0, 0) and pos_tuple not in self.walls:
                 self.food_positions.add(pos_tuple)
 
-
-                # Generate toxic trap positions avoiding start, walls, and food
+        # Generate toxic trap positions avoiding start, walls, and food
         self.toxic_traps = set()
         num_traps = 5  # You can change this value
 
@@ -56,19 +55,38 @@ class VisualGridHuntGame:
         self.collision = False
 
     def get_percept(self) -> dict:
+        # Determine adjacent cell coordinate based on current facing direction
+        dx, dy = 0, 0
+        direction = getattr(self, 'facing_direction', 'Up')
+        if direction == 'Up':
+            dy = 1
+        elif direction == 'Down':
+            dy = -1
+        elif direction == 'Left':
+            dx = -1
+        elif direction == 'Right':
+            dx = 1
+
+        ahead_pos = (self.agent_pos[0] + dx, self.agent_pos[1] + dy)
+
+        # Wall ahead if the adjacent coordinate is out of bounds or is an obstacle
+        wall_ahead = (
+            ahead_pos[0] < 0 or ahead_pos[0] >= self.width or
+            ahead_pos[1] < 0 or ahead_pos[1] >= self.height or
+            ahead_pos in self.walls
+        )
+
+        food_here = tuple(self.agent_pos) in self.food_positions
+
         return {
-            'agent_pos': list(self.agent_pos),
-            'opponent_positions': [list(op) for op in self.opponents],
-            'smells_food': tuple(self.agent_pos) in self.food_positions,
-            'hit_wall': tuple(self.agent_pos) in self.walls,
-            'collision': self.collision,
-            'score': self.score,
-            'smells_toxin': tuple(self.agent_pos) in self.toxic_traps, 
-            'remaining_food': len(self.food_positions)
+            'wall_ahead': wall_ahead,
+            'food_here': food_here
         }
 
     def execute_action(self, action: str):
         self.steps += 1
+        if action in ['Up', 'Down', 'Left', 'Right']:
+            self.facing_direction = action
         new_pos = list(self.agent_pos)
 
         if action == 'Up':
