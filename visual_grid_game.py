@@ -1,6 +1,7 @@
 # visual_grid_game.py
 import random
 import tkinter as tk
+from agent import SearchAgent
 
 
 class VisualGridHuntGame:
@@ -80,7 +81,11 @@ class VisualGridHuntGame:
 
         return {
             'wall_ahead': wall_ahead,
-            'food_here': food_here
+            'food_here': food_here,
+            'agent_pos': tuple(self.agent_pos),
+            'remaining_food': list(self.food_positions),
+            'walls': list(self.walls),
+            'grid_size': (self.width, self.height)
         }
 
     def execute_action(self, action: str):
@@ -141,6 +146,7 @@ class GridGameGUI:
 
         self.env = VisualGridHuntGame(width=width, height=height, num_food=num_food, num_opponents=num_opponents,
                                       custom_walls=walls)
+        self.agent = SearchAgent(active_algo='AStar')
 
         # Dynamically calculate cell size so the total canvas fits nicely within a 600x600 window ceiling
         max_canvas_dim = 600
@@ -202,7 +208,7 @@ class GridGameGUI:
 
 
 
-        for ox, oy in self.env.opponents:
+        for ox, oy in self.opponents:
             offset = self.cell_size * 0.2
             x1 = ox * self.cell_size + offset
             y1 = (self.env.height - 1 - oy) * self.cell_size + offset
@@ -221,7 +227,8 @@ class GridGameGUI:
 
         def step():
             if not self.env.is_done():
-                action = random.choice(['Up', 'Down', 'Left', 'Right'])
+                percept = self.env.get_percept()
+                action = self.agent.sense_and_act(percept)
                 self.env.execute_action(action)
 
                 self.draw_grid()
