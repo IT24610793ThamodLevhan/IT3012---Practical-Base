@@ -18,6 +18,62 @@ class SimpleReflexAgent:
             return 'Up'
 
 
+class ModelBasedAgent:
+    """
+    A model-based reflex agent that maintains an internal state (memory)
+    to track position, visited cells, and previous actions to make informed decisions and break loops.
+    """
+
+    def __init__(self):
+        self.current_pos = (0, 0)
+        self.visited_cells = {(0, 0)}
+        self.last_action = None
+        self.last_percept = None
+        self.action_history = []
+
+    def update_state(self, percept: dict):
+        """Transition & Sensor Model: updates the internal state based on percept and last action."""
+        if self.last_action == 'Up':
+            self.current_pos = (self.current_pos[0], self.current_pos[1] + 1)
+        elif self.last_action == 'Down':
+            self.current_pos = (self.current_pos[0], self.current_pos[1] - 1)
+        elif self.last_action == 'Left':
+            self.current_pos = (self.current_pos[0] - 1, self.current_pos[1])
+        elif self.last_action == 'Right':
+            self.current_pos = (self.current_pos[0] + 1, self.current_pos[1])
+
+        self.visited_cells.add(self.current_pos)
+        self.last_percept = percept
+
+    def sense_and_act(self, percept: dict) -> str:
+        # Step 1: Update internal state (Transition & Sensor model)
+        self.update_state(percept)
+
+        # Step 2: Query memory and condition-action rules
+        left_pos = (self.current_pos[0] - 1, self.current_pos[1])
+        left_is_visited = left_pos in self.visited_cells
+
+        if percept.get('food_here'):
+            action = 'Up'
+        elif percept.get('wall_ahead'):
+            # Example rule: IF wall_ahead AND left_is_visited THEN turn_right
+            if self.last_action == 'Right':
+                action = 'Down'
+            elif self.last_action == 'Down':
+                action = 'Left'
+            elif self.last_action == 'Left' or left_is_visited:
+                action = 'Right'
+            else:
+                action = 'Left'
+        else:
+            action = 'Up'
+
+        # Step 3: Record chosen action
+        self.last_action = action
+        self.action_history.append(action)
+        return action
+
+
 class GreedyGridAgent:
     """A simple agent that tries to move around systematically to clear the grid."""
 
