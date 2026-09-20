@@ -1,4 +1,5 @@
 # agent.py
+import heapq
 import math
 import random
 
@@ -139,5 +140,66 @@ class SearchAgent:
                         next_pos not in visited):
                     visited.add(next_pos)
                     queue.append((next_pos, path + [action]))
+
+        return None
+
+    def astar_search(self, start_pos, goal_pos, walls, grid_size, heuristic_type='manhattan'):
+        """
+        Finds the optimal path from start_pos to goal_pos using A* Search algorithm.
+        """
+        # Choose heuristic function
+        if heuristic_type == 'euclidean':
+            heuristic_func = self.euclidean_distance
+        else:
+            heuristic_func = self.manhattan_distance
+
+        start = tuple(start_pos)
+        goal = tuple(goal_pos)
+        walls_set = {tuple(w) for w in walls}
+        width, height = grid_size
+
+        # Initialize empty priority queue and reached_states set
+        pq = []
+        reached_states = set()
+
+        # Initial node: (f_cost, g_cost, current_pos, path_taken)
+        g_0 = 0
+        h_0 = heuristic_func(start, goal)
+        f_0 = g_0 + h_0
+        heapq.heappush(pq, (f_0, g_0, start, []))
+
+        # While loop to process the queue
+        while pq:
+            _, g_cost, current_pos, path_taken = heapq.heappop(pq)
+
+            if current_pos in reached_states:
+                continue
+
+            # Check if goal is reached
+            if current_pos == goal:
+                return path_taken
+
+            reached_states.add(current_pos)
+
+            # Node expansion: check adjacent cells (Up, Down, Left, Right)
+            directions = [
+                ('Up', (0, 1)),
+                ('Down', (0, -1)),
+                ('Left', (-1, 0)),
+                ('Right', (1, 0))
+            ]
+
+            for action, (dx, dy) in directions:
+                next_pos = (current_pos[0] + dx, current_pos[1] + dy)
+
+                # Valid neighbor check (within bounds, not a wall, and not reached)
+                if (0 <= next_pos[0] < width and
+                        0 <= next_pos[1] < height and
+                        next_pos not in walls_set and
+                        next_pos not in reached_states):
+                    g_new = g_cost + 1
+                    h_new = heuristic_func(next_pos, goal)
+                    f_new = g_new + h_new
+                    heapq.heappush(pq, (f_new, g_new, next_pos, path_taken + [action]))
 
         return None
