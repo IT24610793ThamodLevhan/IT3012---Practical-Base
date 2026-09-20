@@ -1,4 +1,5 @@
 # agent.py
+import math
 import random
 
 
@@ -85,3 +86,58 @@ class GreedyGridAgent:
         pos = percept.get('agent_pos')
         # Simple heuristic or fallback random sweep
         return random.choice(self.actions_pool)
+
+
+class SearchAgent:
+    """
+    A search agent that uses search algorithms and heuristic functions to navigate grid environments.
+    """
+
+    def manhattan_distance(self, pos, goal):
+        """
+        Calculates the Manhattan distance using the formula h(n) = |x_1 - x_2| + |y_1 - y_2|
+        and returns the integer value.
+        """
+        return int(abs(pos[0] - goal[0]) + abs(pos[1] - goal[1]))
+
+    def euclidean_distance(self, pos, goal):
+        """
+        Calculates the straight-line distance using the formula h(n) = sqrt((x_1 - x_2)^2 + (y_1 - y_2)^2).
+        """
+        return math.sqrt((pos[0] - goal[0]) ** 2 + (pos[1] - goal[1]) ** 2)
+
+    def bfs_search(self, start_pos, goal_pos, walls, grid_size):
+        """
+        Finds the shortest path from start_pos to goal_pos using Breadth-First Search (BFS).
+        """
+        from collections import deque
+
+        queue = deque([(start_pos, [])])
+        visited = {start_pos}
+        walls_set = set(walls)
+        width, height = grid_size
+
+        while queue:
+            current_pos, path = queue.popleft()
+
+            if current_pos == goal_pos:
+                return path
+
+            directions = [
+                ('Up', (0, 1)),
+                ('Down', (0, -1)),
+                ('Left', (-1, 0)),
+                ('Right', (1, 0))
+            ]
+
+            for action, (dx, dy) in directions:
+                next_pos = (current_pos[0] + dx, current_pos[1] + dy)
+
+                if (0 <= next_pos[0] < width and
+                        0 <= next_pos[1] < height and
+                        next_pos not in walls_set and
+                        next_pos not in visited):
+                    visited.add(next_pos)
+                    queue.append((next_pos, path + [action]))
+
+        return None
