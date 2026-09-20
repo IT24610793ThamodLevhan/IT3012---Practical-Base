@@ -94,6 +94,11 @@ class SearchAgent:
     A search agent that uses search algorithms and heuristic functions to navigate grid environments.
     """
 
+    def __init__(self, active_algo='AStar', heuristic_type='manhattan'):
+        self.active_algo = active_algo
+        self.heuristic_type = heuristic_type
+        self.plan = []
+
     def manhattan_distance(self, pos, goal):
         """
         Calculates the Manhattan distance using the formula h(n) = |x_1 - x_2| + |y_1 - y_2|
@@ -140,6 +145,80 @@ class SearchAgent:
                         next_pos not in visited):
                     visited.add(next_pos)
                     queue.append((next_pos, path + [action]))
+
+        return None
+
+    def dfs_search(self, start_pos, goal_pos, walls, grid_size):
+        """
+        Finds a path from start_pos to goal_pos using Depth-First Search (DFS).
+        """
+        stack = [(tuple(start_pos), [])]
+        visited = set()
+        walls_set = {tuple(w) for w in walls}
+        width, height = grid_size
+
+        while stack:
+            current_pos, path = stack.pop()
+
+            if current_pos in visited:
+                continue
+            visited.add(current_pos)
+
+            if current_pos == tuple(goal_pos):
+                return path
+
+            directions = [
+                ('Up', (0, 1)),
+                ('Down', (0, -1)),
+                ('Left', (-1, 0)),
+                ('Right', (1, 0))
+            ]
+
+            for action, (dx, dy) in directions:
+                next_pos = (current_pos[0] + dx, current_pos[1] + dy)
+
+                if (0 <= next_pos[0] < width and
+                        0 <= next_pos[1] < height and
+                        next_pos not in walls_set and
+                        next_pos not in visited):
+                    stack.append((next_pos, path + [action]))
+
+        return None
+
+    def ucs_search(self, start_pos, goal_pos, walls, grid_size):
+        """
+        Finds the lowest-cost path from start_pos to goal_pos using Uniform-Cost Search (UCS).
+        """
+        pq = [(0, tuple(start_pos), [])]
+        visited = set()
+        walls_set = {tuple(w) for w in walls}
+        width, height = grid_size
+
+        while pq:
+            cost, current_pos, path = heapq.heappop(pq)
+
+            if current_pos in visited:
+                continue
+            visited.add(current_pos)
+
+            if current_pos == tuple(goal_pos):
+                return path
+
+            directions = [
+                ('Up', (0, 1)),
+                ('Down', (0, -1)),
+                ('Left', (-1, 0)),
+                ('Right', (1, 0))
+            ]
+
+            for action, (dx, dy) in directions:
+                next_pos = (current_pos[0] + dx, current_pos[1] + dy)
+
+                if (0 <= next_pos[0] < width and
+                        0 <= next_pos[1] < height and
+                        next_pos not in walls_set and
+                        next_pos not in visited):
+                    heapq.heappush(pq, (cost + 1, next_pos, path + [action]))
 
         return None
 
@@ -203,3 +282,45 @@ class SearchAgent:
                     heapq.heappush(pq, (f_new, g_new, next_pos, path_taken + [action]))
 
         return None
+
+    def sense_and_act(self, percept: dict) -> str:
+        """
+        Plans and executes actions using the selected search algorithm.
+        """
+        # If we don't have a plan or the current plan is finished, generate a new plan
+        if not self.plan:
+            agent_pos = percept.get('agent_pos')
+            remaining_food = percept.get('remaining_food', [])
+            walls = percept.get('walls', [])
+            grid_size = percept.get('grid_size', (10, 10))
+
+            if not agent_pos or not remaining_food:
+                return random.choice(['Up', 'Down', 'Left', 'Right'])
+
+            # Find the closest food item to act as the goal_pos
+            goal_pos = min(
+                remaining_food,
+                key=lambda food: self.manhattan_distance(agent_pos, food)
+            )
+
+            # Choose algorithm and compute path
+            if self.active_algo == 'BFS':
+                self.plan = self.bfs_search(agent_pos, goal_pos, walls, grid_size) or []
+            elif self.active_algo == 'DFS':
+                self.plan = self.dfs_search(agent_pos, goal_pos, walls, grid_size) or []
+            elif self.active_algo == 'UCS':
+                self.plan = self.ucs_search(agent_pos, goal_pos, walls, grid_size) or []
+            elif self.active_algo == 'AStar':
+                self.plan = self.astar_search(
+                    agent_pos,
+                    goal_pos,
+                    walls,
+                    grid_size,
+                    heuristic_type=self.heuristic_type
+                ) or []
+
+        # Return the next action from the plan if available
+        if self.plan:
+            return self.plan.pop(0)
+
+        return random.choice(['Up', 'Down', 'Left', 'Right'])
